@@ -1,104 +1,173 @@
 # Noturno Web Template
 
-## Papel da IA
+## Sobre o Projeto
 
-A IA é uma executora técnica.
+Este repositório representa o padrão arquitetural adotado pela Noturno Softwares para desenvolvimento de aplicações web.
 
-Ela não define arquitetura.
+Toda implementação deve respeitar este documento.
+
+A IA não define arquitetura.
 
 A arquitetura é definida por Glenio e pela Noturno Softwares.
 
-Antes de implementar qualquer funcionalidade, a IA deve respeitar as regras deste documento.
+---
+
+# Princípios
+
+* Frontend e Backend são projetos independentes.
+* O frontend nunca implementa backend.
+* O frontend nunca acessa banco de dados diretamente.
+* Toda comunicação deve ocorrer através de APIs REST externas.
+* O sistema deve permitir múltiplos provedores externos.
+* Todo módulo deve iniciar utilizando dados mockados.
+* A integração real ocorre posteriormente.
+* Todo código deve ser preparado para manutenção por equipes independentes.
 
 ---
 
-# Arquitetura
+# Tecnologias
 
 ## Frontend
 
-- React
-- Next.js
-- TypeScript
+* React
+* Next.js
+* TypeScript
 
 ## Backend
 
-O backend é SEMPRE um projeto independente.
+O backend não faz parte deste projeto.
 
-O frontend nunca implementa backend.
+Pode ser:
 
-O frontend nunca implementa API interna.
+* Delphi / TMS XData
+* Node.js
+* NestJS
+* Go
+* Outros provedores REST
 
-Nunca utilizar:
-
-- app/api
-- API Routes
-- Server Actions para regras de negócio
-- Banco de dados diretamente no frontend
+O frontend nunca deve assumir detalhes de implementação do backend.
 
 ---
 
-# Estrutura
+# Estrutura dos Módulos
 
-Todo módulo deve seguir:
+Todo módulo deve seguir obrigatoriamente a estrutura:
 
 src/modules/{module}
 
-  domain
-    models
-    enums
-    repositories
-    usecases
+domain
 
-  data
-    repositories
-    providers
-    mocks
+* models
+* enums
+* repositories
 
-  presentation
-    pages
-    stores
-    widgets
+data
+
+* application
+* repositories
+* providers
+* mocks
+
+presentation
+
+* pages
+* stores
+* widgets
 
 ---
 
-# Fluxo
+# Responsabilidades
+
+## Domain
+
+Responsável por:
+
+* Models
+* Enums
+* Contratos de Repository
+
+Não deve conter implementação de API.
+
+---
+
+## Data/Application
+
+Responsável por:
+
+* UseCases
+* Regras de orquestração
+* Fluxos da aplicação
+
+Exemplos:
+
+* GetCustomers
+* SaveCustomer
+* DeleteCustomer
+
+---
+
+## Data/Repositories
+
+Responsável por implementar os contratos definidos em domain.
+
+---
+
+## Data/Providers
+
+Responsável pela comunicação com provedores externos.
+
+Exemplos:
+
+* ERPProvider
+* MercadoLivreProvider
+* OpenAIProvider
+* AnthropicProvider
+
+---
+
+## Data/Mocks
+
+Responsável por fornecer dados simulados durante o desenvolvimento inicial.
+
+Todo novo módulo deve iniciar utilizando mocks.
+
+---
+
+## Presentation
+
+Responsável por:
+
+* Pages
+* Stores
+* Widgets
+
+A camada de apresentação nunca deve acessar APIs diretamente.
+
+---
+
+# Fluxo Obrigatório
 
 Page
+
 → Store
-→ UseCase
+
+→ Application
+
 → Repository
+
 → Provider
 
-Nunca acessar APIs diretamente de páginas ou componentes.
+Nunca quebrar este fluxo.
 
 ---
 
 # Integrações
 
-Todo sistema deve ser preparado para múltiplos provedores.
+Todo projeto deve permitir troca de provedores sem impacto na camada de apresentação.
 
-Exemplos:
+Utilizar sempre Repository para abstração.
 
-- ERP Noturno
-- Mercado Livre
-- OpenAI
-- Anthropic
-- Outros provedores
-
-Sempre utilizar Repository para abstração.
-
----
-
-# Desenvolvimento
-
-Todo módulo novo deve iniciar com:
-
-- Mock Provider
-- Dados mockados
-- Casos de uso implementados
-- Interface funcional
-
-A integração real será realizada posteriormente.
+Nunca acoplar a interface diretamente a um fornecedor.
 
 ---
 
@@ -106,22 +175,43 @@ A integração real será realizada posteriormente.
 
 Toda funcionalidade relevante deve possuir documentação.
 
-Toda decisão arquitetural deve ser registrada em:
-
-docs/decisions
-
 Toda funcionalidade complexa deve possuir especificação em:
 
 docs/specifications
 
+Toda decisão arquitetural deve ser registrada em:
+
+docs/decisions
+
 ---
 
-# Princípios
+# Desenvolvimento Assistido por IA
 
-- Separação entre frontend e backend
-- Código desacoplado
-- Baixo acoplamento entre provedores
-- Reutilização de módulos
-- Facilidade de manutenção
-- Facilidade de testes
-- Arquitetura preparada para equipes independentes
+Antes de implementar qualquer funcionalidade a IA deve:
+
+1. Analisar a arquitetura existente.
+2. Respeitar os padrões definidos neste documento.
+3. Informar quais arquivos pretende criar ou alterar.
+4. Explicar o fluxo da solução.
+5. Somente depois realizar a implementação.
+
+A IA não deve criar estruturas arquiteturais diferentes das definidas neste projeto.
+
+---
+
+# Restrições
+
+Nunca criar:
+
+* app/api
+* API Routes
+* Backend dentro do Next.js
+* Acesso direto a banco
+* Regras de negócio dentro de componentes React
+* Chamadas HTTP diretamente em páginas ou widgets
+
+---
+
+# Objetivo
+
+Criar aplicações web escaláveis, desacopladas, documentadas e preparadas para evolução contínua, mantendo os mesmos princípios arquiteturais utilizados nos projetos Flutter da Noturno Softwares.
