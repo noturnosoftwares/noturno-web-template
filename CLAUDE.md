@@ -161,6 +161,47 @@ Nunca quebrar este fluxo.
 
 ---
 
+# Ciclo de Vida e Instâncias
+
+Antes de criar services, providers, repositories, stores ou controllers, a IA deve analisar se a classe deve ser:
+
+- Instância única / singleton
+- Instância por módulo
+- Instância por tela
+- Instância por execução de usecase
+- Instância temporária
+
+A decisão nunca deve ser automática.
+
+## Quando considerar singleton
+
+Singleton pode ser considerado para:
+
+- Configuração global
+- Cliente HTTP compartilhado
+- Controle de autenticação
+- Cache global
+- Serviços sem estado
+- Providers reutilizados por todo o sistema
+
+## Quando evitar singleton
+
+Evitar singleton quando houver:
+
+- Estado específico de tela
+- Dados temporários
+- Filtros de listagem
+- Formulários
+- Estado de edição
+- Risco de vazar dados entre módulos
+- Necessidade de múltiplas instâncias independentes
+
+## Regra
+
+Sempre justificar a escolha do ciclo de vida da instância em implementações relevantes.
+
+---
+
 # Integrações
 
 Todo projeto deve permitir troca de provedores sem impacto na camada de apresentação.
