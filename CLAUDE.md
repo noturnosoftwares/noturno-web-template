@@ -79,17 +79,51 @@ O frontend nunca deve assumir detalhes internos do backend.
 
 ---
 
+# Ambiente e Comandos
+
+> Confirme estes valores no primeiro setup do projeto e ajuste conforme o `package.json` real. Esta seção existe para que a IA saiba como validar o próprio trabalho antes de concluir uma tarefa.
+
+## Ambiente
+
+* Node.js: 20 LTS ou superior
+* Gerenciador de pacotes: pnpm (padrão para o monorepo)
+* Workspaces: pnpm workspaces
+
+## Comandos padrão
+
+```txt
+pnpm install        # instalar dependências
+pnpm dev            # ambiente de desenvolvimento (Vite)
+pnpm build          # build de produção
+pnpm preview        # servir o build localmente
+pnpm test           # testes unitários
+pnpm lint           # análise estática (ESLint)
+pnpm typecheck      # checagem de tipos (vue-tsc / tsc)
+pnpm format         # formatação (Prettier)
+```
+
+## Regra de validação
+
+Antes de considerar qualquer tarefa concluída, a IA deve garantir que o código:
+
+* compila (`pnpm build` ou `pnpm typecheck`);
+* passa no lint (`pnpm lint`);
+* não quebra testes existentes (`pnpm test`).
+
+A IA nunca deve concluir uma tarefa com erros de tipo, lint ou build pendentes.
+
+---
+
 # Restrições Absolutas
 
 Nunca criar:
 
-* `app/api`
-* API Routes
-* backend dentro do Next.js
-* acesso direto a banco
-* regras de negócio dentro de componentes React
+* backend dentro do projeto frontend
+* rotas de servidor/API dentro do Vite ou do Vue
+* acesso direto a banco de dados
+* regras de negócio dentro de componentes Vue (`.vue`)
 * chamadas HTTP diretamente em pages
-* chamadas HTTP diretamente em widgets
+* chamadas HTTP diretamente em widgets/components
 * cores fora da paleta oficial
 * dependências externas sem justificativa
 * arquitetura diferente da definida neste documento
@@ -604,7 +638,7 @@ Priorizar:
 
 * código próprio;
 * componentes internos;
-* recursos nativos do React/Next.js/TypeScript;
+* recursos nativos do Vue/TypeScript;
 * shared widgets do projeto;
 * helpers internos;
 * extensions/utilitários próprios.
