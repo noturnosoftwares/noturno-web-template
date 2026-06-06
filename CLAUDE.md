@@ -54,9 +54,14 @@ A IA deve se adaptar ao padrão existente, nunca impor arquitetura diferente.
 
 ## Frontend
 
-* React
-* Next.js
-* TypeScript
+- Vue.js 3.5
+- Vite
+- TypeScript
+- PrimeVue UI
+- Tailwind CSS
+- Composition API
+- Pinia
+- Vue Router
 
 ## Backend
 
