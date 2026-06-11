@@ -128,6 +128,20 @@ Nunca criar:
 * dependências externas sem justificativa
 * arquitetura diferente da definida neste documento
 
+## Consulta e seleção reutilizam a tela existente
+
+Antes de criar qualquer busca/seleção de um dado, verificar se já existe a tela
+de cadastro/listagem daquele dado. Se existir, ela é reutilizada em "modo seleção"
+— nunca criar uma segunda tela só para pesquisar/selecionar o mesmo dado.
+
+Toda tela de listagem nasce com dois modos (parâmetro de rota `mode=select`):
+- modo gestão: Enter / duplo clique / clique → abre detalhes;
+- modo seleção: Enter / duplo clique / clique → devolve o registro à tela solicitante.
+
+Como em modo seleção os gestos ficam reservados para devolver, toda listagem deve
+ter, além do botão Incluir, um botão explícito "Ver detalhes" (abre o registro nos
+dois modos). Canal de retorno: store compartilhada de seleção (ver ADR).
+
 ---
 
 # Estrutura dos Módulos
@@ -1207,3 +1221,10 @@ O código deve ser feito para durar anos, não apenas para passar no teste visua
 O objetivo não é apenas gerar código.
 
 O objetivo é criar patrimônio tecnológico documentado, versionado, testável, escalável e sustentável.
+
+# Versionamento Automático
+
+Ao concluir qualquer tarefa, a IA deve:
+1. Rodar `git add -A`
+2. Criar commit seguindo a convenção (feat/docs/refactor/fix com escopo)
+3. Rodar `git push`

@@ -261,6 +261,7 @@ este conjunto; a spec abaixo descreve cada um):
 | `LookupField`     | `lookup-field.vue`      | Referência a registro (campo **search**) |
 | `FormField`       | `form-field.vue`        | Wrapper label → controle → hint/erro     |
 | `BaseTextField`   | `base-text-field.vue`   | Input de texto (FormField embutido)      |
+| `BaseSelect`      | `base-select.vue`       | Seleção discreta (mesma anatomia do campo) |
 | `FormSection`     | `form-section.vue`      | Grupo de campos por contexto             |
 | `BaseDataTable`   | `base-data-table.vue`   | Grid de leitura (sort/paginação client)  |
 | `BasePagination`  | `base-pagination.vue`   | Paginação                                |
@@ -284,16 +285,25 @@ Anatomia: **label (em cima)** → **controle** → **hint/erro (embaixo)**.
 | Erro       | `feedback-danger` | helper em `feedback-danger` + ícone de erro   |
 | Desabilitado | `border-subtle` | opacidade .4, sem cursor                       |
 
-* Fundo: `surface-1`; raio `radius-md`; altura mínima 40px.
+* Fundo: `surface-1`; raio `radius-md`; **altura 40px** — **igual para todos os
+  campos** (texto, busca, select, lookup). Campos lado a lado **nunca** podem ter
+  alturas/bordas diferentes. Controles de terceiros (PrimeVue `Select`, etc.) são
+  embrulhados num componente-base (`BaseSelect`) que força essa anatomia — **nunca**
+  usar o controle cru na tela.
 * **Borda discreta por padrão.** Em repouso o campo usa `border-subtle` (não a borda
   cheia); hover sobe para `border-default`. Foco = **borda dourada + anel suave** (ring
   de baixa opacidade que abraça a borda). **Proibido o realce duplo** (outline deslocado
   *somado* à borda colorida) — lê como "borda dupla/grossa". É **um** realço, não dois.
 * **Ícone dentro do campo nunca sobrepõe o texto.** Se houver ícone à esquerda (ex.: busca),
   o input recebe `padding-left = largura do ícone + space-3`. *(Bug visto na tela de Usuários.)*
-* Derivados padronizados em `shared/widgets`: `SearchField`, `LookupField`, `MoneyField`,
-  `DateField`, `CpfField`, `CnpjField`, `CepField`, `PhoneField`. Formatação/validação vêm
-  de `shared/extensions` — nunca recodificar máscara por tela.
+* Derivados padronizados em `shared/widgets`: `SearchField`, `BaseSelect`, `LookupField`,
+  `MoneyField`, `DateField`, `CpfField`, `CnpjField`, `CepField`, `PhoneField`. Formatação/
+  validação vêm de `shared/extensions` — nunca recodificar máscara por tela.
+* **Ordem lógica dos campos.** Os campos seguem a **ordem natural de leitura/
+  preenchimento** (ex.: nome → login → e-mail; em barras de pesquisa: termo →
+  filtros). **Ações (botões) vêm sempre ao final** (à direita / depois dos campos)
+  — ex.: `[busca] [filtro situação] [Buscar] [Limpar]`, nunca um filtro depois do
+  botão de ação. A ordem de **Tab** acompanha (campo → campo → ação).
 * **Booleano (sim/não, ativo/inativo, habilitar/desabilitar) é sempre um `Switch`** — nunca
   checkbox, select de duas opções ("Sim"/"Não") ou par de rádios. O switch comunica
   estado on/off de imediato e é operável por teclado.
