@@ -446,7 +446,7 @@ scrollbar fina da identidade.
   disposição **antes** de implementar; campos longos ocupam a linha inteira.
 * **Combobox/Select só para dados estáticos** (listas pequenas e fixas — ex.: papel, escopo,
   tipo). **Dado vindo do backend / referência a outro registro** (FK: Funcionário, Cliente,
-  Cidade, Operador…) usa **`LookupField`** — um **campo de busca (search)**: exibe o registro
+  Cidade, Operador, **Perfil/modelo**…) usa **`LookupField`** — um **campo de busca (search)**: exibe o registro
   escolhido e, ao acionar, **abre a pesquisa que retorna o registro** (tela/diálogo de busca
   dedicado). **Não** é um listbox/autocomplete/select cravado nem um input de ID cru. O campo
   já nasce nesse formato mesmo que a tela de retorno ainda não exista. Filtros de listagem
