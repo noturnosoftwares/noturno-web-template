@@ -187,6 +187,14 @@ Fonte: **Inter** (fallback `system-ui, -apple-system, Segoe UI, Roboto, sans-ser
 Atalhos semânticos: **padding de página** `space-6`/`space-8`; **padding interno de card**
 `space-5`/`space-6`; **gap entre campos** `space-4`; **gap label↔campo** `space-2`.
 
+**Fonte única do espaçamento de página: `PageContainer`.** O padding de página
+(`space-6`→`space-8`) e a largura de leitura **não** são redefinidos por tela —
+vêm do shared widget `PageContainer`. Toda tela dentro do `AppShell` (pesquisa,
+cadastro **e** detalhe) é envolvida por ele, com a **mesma** margem lateral e a
+**mesma** largura máxima. Proibido escrever `p-6/lg:p-8 + mx-auto max-w-[…]` "na
+mão" por página (gera margens divergentes entre pesquisa e cadastro — anti-padrão
+§12). Ver `docs/ui` §1.
+
 ---
 
 ## 5. Raio de Borda
@@ -240,6 +248,30 @@ KPI; *pulse* gentil (1.6–2s) no ícone de empty-state; slide+fade de toasts e 
 > Esta é a camada que faltava e causou a quebra. **Nenhuma tela monta campo, botão,
 > tabela, diálogo, toast ou estado vazio "na mão".** Tudo vem daqui (em `shared/widgets`).
 
+**Inventário canônico** (nomes reais em `shared/widgets` — todo projeto Noturno entrega
+este conjunto; a spec abaixo descreve cada um):
+
+| Componente        | Arquivo                 | Papel                                    |
+| ----------------- | ----------------------- | ---------------------------------------- |
+| `BaseButton`      | `base-button.vue`       | Botão (primary/danger/neutral/icon)      |
+| `BaseCard`        | `base-card.vue`         | Superfície/card padrão                   |
+| `StatusBadge`     | `status-badge.vue`      | Situação (cor + ícone + rótulo)          |
+| `EmptyState`      | `empty-state.vue`       | Vazio com `tone` (accent/danger/muted)   |
+| `SearchField`     | `search-field.vue`      | Busca (Enter; ícone sem sobrepor)        |
+| `LookupField`     | `lookup-field.vue`      | Referência a registro (campo **search**) |
+| `FormField`       | `form-field.vue`        | Wrapper label → controle → hint/erro     |
+| `BaseTextField`   | `base-text-field.vue`   | Input de texto (FormField embutido)      |
+| `FormSection`     | `form-section.vue`      | Grupo de campos por contexto             |
+| `BaseDataTable`   | `base-data-table.vue`   | Grid de leitura (sort/paginação client)  |
+| `BasePagination`  | `base-pagination.vue`   | Paginação                                |
+| `ConfirmDialog`   | `confirm-dialog.vue`    | Diálogo por finalidade (`purpose`)       |
+| `BaseToast`       | `base-toast.vue`        | Toast (top-right; chrome §8.8)           |
+| `StickyActionBar` | `sticky-action-bar.vue` | Rodapé de ação dirty-aware (§10.10)      |
+| `AppShell`        | módulo `home`           | Casca sidebar + topbar                   |
+
+> O `BaseField`/`BaseDialog` da spec original são entregues como `FormField`+`BaseTextField`
+> e `ConfirmDialog` (finalidade via `purpose`). Booleanos usam **`Switch`** (§8.10).
+
 ### 8.1 Campo (`BaseField` e derivados)
 
 Anatomia: **label (em cima)** → **controle** → **hint/erro (embaixo)**.
@@ -253,11 +285,20 @@ Anatomia: **label (em cima)** → **controle** → **hint/erro (embaixo)**.
 | Desabilitado | `border-subtle` | opacidade .4, sem cursor                       |
 
 * Fundo: `surface-1`; raio `radius-md`; altura mínima 40px.
+* **Borda discreta por padrão.** Em repouso o campo usa `border-subtle` (não a borda
+  cheia); hover sobe para `border-default`. Foco = **borda dourada + anel suave** (ring
+  de baixa opacidade que abraça a borda). **Proibido o realce duplo** (outline deslocado
+  *somado* à borda colorida) — lê como "borda dupla/grossa". É **um** realço, não dois.
 * **Ícone dentro do campo nunca sobrepõe o texto.** Se houver ícone à esquerda (ex.: busca),
   o input recebe `padding-left = largura do ícone + space-3`. *(Bug visto na tela de Usuários.)*
-* Derivados padronizados em `shared/widgets`: `SearchField`, `MoneyField`, `DateField`,
-  `CpfField`, `CnpjField`, `CepField`, `PhoneField`. Formatação/validação vêm de
-  `shared/extensions` — nunca recodificar máscara por tela.
+* Derivados padronizados em `shared/widgets`: `SearchField`, `LookupField`, `MoneyField`,
+  `DateField`, `CpfField`, `CnpjField`, `CepField`, `PhoneField`. Formatação/validação vêm
+  de `shared/extensions` — nunca recodificar máscara por tela.
+* **Booleano (sim/não, ativo/inativo, habilitar/desabilitar) é sempre um `Switch`** — nunca
+  checkbox, select de duas opções ("Sim"/"Não") ou par de rádios. O switch comunica
+  estado on/off de imediato e é operável por teclado.
+* **Campo de referência a outro registro é `LookupField`** (type-to-search), não input de
+  ID cru nem select gigante — ver §9.2.
 
 ### 8.2 Botão (`BaseButton`)
 
@@ -293,11 +334,19 @@ Hover de card interativo: lift sutil (seção 7). Dashboards usam cards **animad
   contextual; ou (exceção) um único menu "mais" por linha quando indispensável.
 * Estados: **loading** (skeleton de linhas), **vazio** (empty-state da seção 9.1), **erro**.
 
-### 8.6 Paginação (`BasePagination`)
+### 8.6 Carregamento de listagem — scroll infinito (`BaseDataTable`) e `BasePagination`
 
-Sempre presente em resultados de pesquisa. Boa apresentação: primeiro/anterior/página/
-próximo/último + faixa ("1–20 de 134"). Seletor de tamanho de página opcional.
-Centralizada ou à direita, com respiro.
+**Padrão das listagens de pesquisa: scroll infinito (ADR-002).** O grid carrega
+em **lotes de 30** e, ao aproximar do fim, pede o próximo lote automaticamente
+(sentinela via `IntersectionObserver`), com um **indicador de carregamento no
+rodapé** enquanto houver dados (`hasMore`). **Sem** controles/numeração de
+página. Estado na `BaseCrudStore` (`loadPage`/`loadMore`/`hasMore`/`loadingMore`);
+o grid emite `load-more`, a página liga ao `store.loadNext()`.
+
+`BasePagination` (primeiro/anterior/página/próximo/último + faixa "1–20 de 134")
+**não foi revogado** — permanece para casos específicos que exijam navegação
+determinística por página (ex.: "ir para a página X") —, mas **não é o padrão**
+das pesquisas. Ver ADR-002 e `docs/ui` §2.
 
 ### 8.7 Diálogo (`BaseDialog`)
 
@@ -311,18 +360,53 @@ corpo, rodapé com ações. A **cor representa a finalidade**:
 | Sucesso/positivo  | `feedback-success`| `primary`                   |
 | Informação        | `feedback-info`   | `neutral`/`primary`         |
 
+Entregue como **`ConfirmDialog`** (finalidade via prop `purpose`). Layout padrão:
+
+* **Ícone pequeno** (círculo sutil ~28px) **alinhado ao título** na mesma linha — não ao
+  bloco todo. Título `text-h3`/semibold; mensagem `text-body` em `content-muted`.
+* **Padding e espaçamento padronizados** (corpo `space-5`, gaps `space-4` entre título,
+  texto e ações).
+* **Botões à direita, mesma altura/largura** (`min-width` comum): Cancelar `neutral`
+  (ghost/outline) + confirmação na cor da finalidade. **Largura contida** (~24rem, com
+  `max-width` responsiva).
+
 ### 8.8 Toast (`BaseToast`)
 
-* **Posição: canto superior esquerdo** ("vindo de cima da esquerda"), com slide+fade.
+* **Posição: canto superior direito**, com slide+fade e **margem do canto** (não colado na
+  borda). Fica do lado oposto à **barra de busca** (que vive à esquerda do header), para
+  **nunca cobri-la**.
+* **Chrome obrigatório** (não é um bloco de texto solto): superfície `elev-3` com **borda**,
+  `radius-card`, **barra de cor à esquerda** por severidade, **ícone** num círculo tonal,
+  **título** (`summary`) + **mensagem** (`detail`) e botão **fechar**. Largura contida
+  (~22rem), conteúdo com respiro — nunca largo, sem margem e sem título.
 * Tipos success/info/warning/danger (cor + ícone + mensagem). Auto-dismiss ~4s,
   dispensável, empilhável.
 * **Disparo pós-ação:** ex. após excluir → "Usuário excluído."; após salvar → "Salvo."
+* **Falha de salvamento sempre vira toast.** Em qualquer erro de save (validação
+  **ou** API), além do informativo geral no topo + erros por campo, dispare um
+  toast `error` com a **mesma mensagem geral** (formulários longos podem ter o
+  banner fora da viewport). Ver §9.2/§10.10 e `docs/ui` §3.
 
 ### 8.9 Shell de aplicação (`AppShell`)
 
 Toda tela autenticada vive dentro do shell: **sidebar** (recolhível) + **topbar**
 (busca Ctrl+K, notificações, ajuda, perfil) + área de conteúdo em `surface-canvas`.
 **Proibido** página solta full-bleed dentro do app. *(Quebra vista na tela de Usuários.)*
+
+A **sidebar** é densa (padding vertical enxuto), rótulos em **uma linha** com ellipsis
+(`truncate`), ícone+texto alinhados à esquerda, sub-itens indentados por guia à esquerda
+(`border-l`), realce do item ativo **limpo** (tint `accent-soft` + texto/ícone accent) e
+scrollbar fina da identidade.
+
+### 8.10 Switch, Seção de formulário e Rodapé de ação
+
+* **Switch (`ToggleSwitch` no preset Noturno):** o controle on/off de **todo booleano**
+  (§8.1/9.2). Thumb centrado na vertical, encostando à direita (ON) / esquerda (OFF) — ver
+  a correção obrigatória de alinhamento em §13.3.
+* **`FormSection`:** agrupa campos por contexto num card com título/descrição (§9.2) —
+  substitui o `<fieldset>` "na mão".
+* **`StickyActionBar` (rodapé de ação):** Salvar/Cancelar **dirty-aware**, **sólido e FORA
+  da área de rolagem** (não flutua nem sobrepõe o conteúdo) — ver §10.10.
 
 ---
 
@@ -336,22 +420,52 @@ Toda tela autenticada vive dentro do shell: **sidebar** (recolhível) + **topbar
   com **pulse gentil**, e copy amigável **não repetitiva**. Banco de variações sugerido:
   "Pronto para pesquisar.", "Comece pela busca acima.", "Busque para ver os resultados.",
   "Digite e pressione Enter."
+* **Dois vazios distintos:** (1) **convite à busca** — tom `accent`, ícone do domínio,
+  pulse; (2) **"nada encontrado"** — tom **`danger`** (o propósito é "não achei", não um
+  alerta amarelo), ícone de busca-sem-resultado, que **destaca o termo pesquisado em
+  vermelho** (token `danger` = `#FF2626`, nunca hex avulso), entre aspas
+  (ex.: *Nenhum resultado para "jose"*), **e oferece o botão "Limpar pesquisa"**
+  abaixo — que **limpa termo + filtros** e **recarrega a lista completa**. Tudo via
+  `EmptyState` compartilhado (slot `title` para o destaque, slot padrão para o botão).
 * **Busca por Enter ou botão** — **nunca** busca incremental no backend a cada tecla.
   Se os dados já estiverem em **cache**, a digitação filtra no cliente.
-* **Filtros sempre que possível**; **ordenação**; **paginação sempre**.
+* **Filtros sempre que possível**; **ordenação**; **carregamento por scroll infinito**
+  (lote de 30 — §8.6/ADR-002), nunca controles de página.
 * Quando fizer sentido, **cards de situação** no topo com dados importantes do resultado
   (totais, críticos, etc.).
 * Sem ações inline no grid (ver 8.5).
+* **Preservar o contexto ao voltar.** Abrir um registro e retornar **não pode zerar** a
+  pesquisa: o termo, os filtros e os resultados continuam. Melhor ainda — ao voltar,
+  **reexecuta a busca** com os filtros atuais para **refletir inclusões/edições/exclusões**.
+  O estado da busca vive no **store** (não em ref local da page, que morre ao desmontar).
 
 ### 9.2 Formulários e CRUD
 
 * **Agrupar campos por contexto** em seções/cards com título.
 * **Não poluir:** no máximo 2 (às vezes 3) campos por linha no desktop; analisar a
   disposição **antes** de implementar; campos longos ocupam a linha inteira.
-* **Combobox/Lookup só para dados estáticos** (listas pequenas e fixas). Dado vindo do
-  **backend** usa **campo de busca/lookup** (type-to-search), nunca um select gigante.
-  Filtros de listagem ficam em **search fields**.
-* **Confirmar antes** de: cancelar, pagar, excluir e qualquer ação destrutiva/irreversível.
+* **Combobox/Select só para dados estáticos** (listas pequenas e fixas — ex.: papel, escopo,
+  tipo). **Dado vindo do backend / referência a outro registro** (FK: Funcionário, Cliente,
+  Cidade, Operador…) usa **`LookupField`** — um **campo de busca (search)**: exibe o registro
+  escolhido e, ao acionar, **abre a pesquisa que retorna o registro** (tela/diálogo de busca
+  dedicado). **Não** é um listbox/autocomplete/select cravado nem um input de ID cru. O campo
+  já nasce nesse formato mesmo que a tela de retorno ainda não exista. Filtros de listagem
+  também usam **search fields**.
+* **Booleanos são `Switch`** (ver §8.1): qualquer sim/não, ativo/inativo, habilitar/X.
+* **Salvar/Cancelar só quando há alteração (dirty).** Em um form sem mudanças, não exiba a
+  barra de ação — o usuário sai pelo voltar/cabeçalho. As ações aparecem **assim que há o
+  que salvar**, evitando "salvar" sem efeito e cliques à toa (ver §10.10). Ações que não
+  dependem de edição (ex.: **Excluir** em modo edição) ficam no **cabeçalho da entidade**,
+  não na barra de salvar.
+* **Confirmar antes** de: pagar, excluir e qualquer ação destrutiva/irreversível.
+* **Cancelar (ADR-001):** cancelar uma **edição** **restaura o registro original**
+  (snapshot imutável na `BaseCrudStore`) e **permanece na tela de detalhe** — não
+  volta para a pesquisa. Cancelar um **registro novo** (sem objeto anterior)
+  descarta e **volta para a listagem**. A regra mora na `BaseCrudStore`
+  (`cancelEditing() → 'stay' | 'leave'`); a página só **reage** ao resultado.
+* **Falha de salvamento → toast.** Em qualquer erro de save (validação ou API),
+  mantenha o informativo geral no topo + erros por campo **e** dispare um toast
+  `error` com a **mesma mensagem geral** (§8.8). Ver `docs/ui` §3.
 * **Guarda de navegação:** sair de uma tela em modo **inclusão/edição** com alterações não
   salvas → confirmar a substituição/descarte da tela antes de navegar.
 
@@ -438,7 +552,11 @@ Distinto do **grid de pesquisa** (8.5, que é só leitura). Para entrada/ediçã
 
 ### 10.10 Barra de ação fixa em formulários longos
 
-* `Salvar`/`Cancelar` em **barra fixa** (sticky) sempre acessível, independente do rolar.
+* `Salvar`/`Cancelar` em **rodapé de ação**, exibido **somente quando há alteração não
+  salva** (dirty). Sem mudanças, sem barra.
+* O rodapé é **sólido e fica FORA da área de rolagem** — o conteúdo rola **acima** dele e
+  **nunca passa por baixo**. **Proibido** barra flutuante/translúcida sobrepondo o conteúdo
+  (pode esconder algo que o usuário quer ver). Ou rodapé fixo abaixo, ou nada.
 * **Resumo de validação** no topo ao submeter com erros; **campos obrigatórios marcados**.
 * Combina com a guarda de navegação de 9.2 (descartar não-salvo).
 
@@ -474,21 +592,63 @@ Lista direta — boa parte saiu da tela de Usuários:
 * Data/moeda/número **fora do pt-BR** ou formatado "na mão" na tela.
 * Form longo **sem barra de ação fixa** (Salvar/Cancelar perdidos no rolar).
 * Edição em massa **sem navegação por teclado**.
+* **Realce de foco duplo** no campo (outline deslocado + borda colorida) — vira "borda dupla".
+* **Campo de referência (FK) como input de ID cru ou select gigante** (use `LookupField`).
+* **Booleano que não é `Switch`** (checkbox/"Sim·Não"/rádios para on·off).
+* **Salvar/Cancelar visíveis sem nenhuma alteração** (barra de ação deve ser dirty-aware).
+* **Rodapé de ação flutuante/translúcido sobrepondo o conteúdo** (deve ficar FORA da rolagem).
+* **Sair de inclusão/edição com alterações sem confirmar o descarte** (perde tudo em silêncio).
+* **Reference field como listbox/autocomplete cravado** em vez de campo de busca (search).
+* **Pesquisa que zera ao voltar** de um registro (estado de busca tem que sobreviver).
 
 ---
 
 ## 13. Implementação na stack (resumo)
 
-* **Tokens** em `src/app/globals.css` via Tailwind v4 `@theme`:
-  primitivos `--color-noturno-*` + semânticos (`--color-surface-1`, `--color-text-muted`,
-  `--color-border-focus`, `--radius-card`, `--space-*`, `--duration-*`…). Tema escuro
-  ativado por `.dark` no `<html>`.
-* **PrimeVue (preset Aura)** mapeado para os tokens semânticos — não estilizar componente
-  PrimeVue por fora com cor crua; ajustar via tokens.
-* **Componentes-base** desta spec em `src/shared/widgets` (incl. `BaseDataGrid`, side drawer,
-  toolbar de lote, barra de ação fixa, chips de filtro); formatadores/validadores e os
-  helpers de localização pt-BR (`formatCurrency`/`formatDate`/`formatNumber`) em
-  `src/shared/extensions`.
+### 13.1 Tokens (`src/app/globals.css`, Tailwind v4 `@theme`)
+
+Primitivos `--color-noturno-*` (paleta oficial) + a camada **semântica**. Os nomes
+semânticos são escolhidos para gerar utilitários Tailwind **sem duplicar o prefixo da
+categoria** (evita `text-text-primary` / `border-border-default`):
+
+| Papel       | Tokens (`--color-…`)                                    | Utilitário (exemplo)            |
+| ----------- | ------------------------------------------------------- | ------------------------------- |
+| Superfície  | `surface-canvas`, `surface-1`, `surface-2`, `surface-3` | `bg-surface-1`                  |
+| Texto       | `content`, `content-soft`, `content-muted`, `on-accent` | `text-content-muted`, `text-on-accent` |
+| Borda       | `line-subtle`, `line`, `line-strong`                    | `border-line`                   |
+| Accent      | `accent`, `accent-hover`, `accent-soft`                 | `bg-accent`, `bg-accent-soft`   |
+| Feedback    | `success` / `danger` / `warning` / `info` (+ `-soft` @14%) | `text-danger`, `bg-danger-soft` |
+
+Raio: `--radius-field` (10px) → `rounded-field`; `--radius-card` (14px) → `rounded-card`;
+`--radius-panel` (20px) → `rounded-panel`. Movimento: `--duration-fast/base/slow` + easings.
+Helpers de classe: `.ds-focus-ring`, `.ds-card-lift`, `.ds-soft-pulse`, `.ds-rise-in`
+(respeitam `prefers-reduced-motion`). Tema escuro via `.dark` no `<html>`.
+
+> **Regra de nomenclatura:** a categoria **texto** vira `content*` e **borda** vira `line*` —
+> nunca `text-*`/`border-*` no nome do token, senão o utilitário gerado duplica o prefixo.
+
+### 13.2 Preset PrimeVue "Noturno" (`src/main.ts`)
+
+`definePreset(Aura, …)` remapeia o tema para a paleta: `primary` na rampa do **dourado**
+(`#ffb621` = 500, `#ff9500` = 600), `surface` na escada dark (até `#040404`) e `formField`
+(borda discreta, raio 10px, foco dourado com anel suave). Assim **todo componente PrimeVue
+nasce on-brand** — proibido estilizar PrimeVue por fora com cor crua; ajustar via tokens.
+
+### 13.3 Correções obrigatórias do PrimeVue (universais)
+
+Regras **não-layerizadas** em `globals.css` (vencem a layer `primevue`):
+
+* **ToggleSwitch:** o CSS estrutural posiciona o thumb com `position:absolute; top:50%` mas
+  não dá contexto de posicionamento à raiz → o thumb cai/desloca. Corrigir com
+  `.p-toggleswitch{position:relative}` + `.p-toggleswitch .p-toggleswitch-handle{top:50%;margin-block-start:0;transform:translateY(-50%)}`.
+* **Toast:** o wrapper padrão `.p-toast-message` traz fundo/borda/sombra por severidade que
+  "vazam" atrás do card → zerar `background/border/box-shadow/border-radius`. O accent do
+  card é um `border-l` (acompanha o raio), nunca um elemento posicionado em absoluto.
+
+### 13.4 Demais
+
+* **Componentes-base** em `src/shared/widgets` (inventário em §8); formatadores/validadores e
+  localização pt-BR (`formatCurrency`/`formatDate`/`formatNumber`) em `src/shared/extensions`.
 * Preferência de **densidade** e **visões/colunas salvas** persistidas por usuário
   (via `KeyValueStore`).
 * Ordem de camadas CSS: `tailwind-base, primevue, tailwind-utilities`.
@@ -503,8 +663,8 @@ Lista direta — boa parte saiu da tela de Usuários:
 * [ ] Pesquisa: abre vazia, empty-state com ícone contextual + pulse, busca por Enter/botão.
 * [ ] Paginação presente; sem ações inline no grid de pesquisa; ordenação onde cabe.
 * [ ] Diálogos coloridos por finalidade + confirmações (cancelar/pagar/excluir) + guarda de navegação.
-* [ ] Toasts no topo-esquerdo após ações.
-* [ ] Forms agrupados por contexto e sem poluição; combobox/lookup conforme regra.
+* [ ] Toasts no **topo-direito** após ações (sem cobrir a busca), com chrome completo (§8.8).
+* [ ] Forms agrupados por contexto e sem poluição; booleanos em `Switch`; referências em `LookupField`.
 * [ ] Estados loading/vazio/erro/sucesso previstos.
 * [ ] Contraste e foco de teclado ok; responsivo.
 * [ ] Animações sutis aplicadas; nada extravagante.
@@ -512,5 +672,8 @@ Lista direta — boa parte saiu da tela de Usuários:
 * [ ] Datas/moeda/números em pt-BR via helpers (sem formatação manual).
 * [ ] Detalhe denso via master-detail/drawer ou página com header + abas; auditoria no Histórico.
 * [ ] Ações contextuais por estado; lote via seleção; grid financeiro com totais; colunas/visões persistidas.
-* [ ] Form longo com barra de ação fixa + resumo de validação + obrigatórios marcados.
+* [ ] Form longo com barra de ação fixa **dirty-aware** + resumo de validação + obrigatórios marcados.
+* [ ] Campos com foco de realce **único** (sem borda dupla); pesquisa **preserva contexto** ao voltar.
+* [ ] Switch com thumb centrado (§13.3); toast sem vazamento de cor nos cantos (§13.3).
+* [ ] Correções obrigatórias do PrimeVue aplicadas (§13.3) e preset Noturno ativo (§13.2).
 * [ ] Documentos com status visível e transições explícitas.
