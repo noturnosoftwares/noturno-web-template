@@ -188,12 +188,13 @@ Atalhos semânticos: **padding de página** `space-6`/`space-8`; **padding inter
 `space-5`/`space-6`; **gap entre campos** `space-4`; **gap label↔campo** `space-2`.
 
 **Fonte única do espaçamento de página: `PageContainer`.** O padding de página
-(`space-6`→`space-8`) e a largura de leitura **não** são redefinidos por tela —
-vêm do shared widget `PageContainer`. Toda tela dentro do `AppShell` (pesquisa,
-cadastro **e** detalhe) é envolvida por ele, com a **mesma** margem lateral e a
-**mesma** largura máxima. Proibido escrever `p-6/lg:p-8 + mx-auto max-w-[…]` "na
-mão" por página (gera margens divergentes entre pesquisa e cadastro — anti-padrão
-§12). Ver `docs/ui` §1.
+(`space-5`→`space-6`) e a largura de leitura **não** são redefinidos por tela —
+vêm do shared widget `PageContainer`. O gutter é **enxuto** em relação à sidebar
+(margem lateral curta, sem desperdício de área útil). Toda tela dentro do
+`AppShell` (pesquisa, cadastro **e** detalhe) é envolvida por ele, com a **mesma**
+margem lateral e a **mesma** largura máxima. Proibido escrever
+`p-5/lg:p-6 + mx-auto max-w-[…]` "na mão" por página (gera margens divergentes
+entre pesquisa e cadastro — anti-padrão §12). Ver `docs/ui` §1.
 
 ---
 
@@ -390,7 +391,8 @@ Entregue como **`ConfirmDialog`** (finalidade via prop `purpose`). Layout padrã
   **título** (`summary`) + **mensagem** (`detail`) e botão **fechar**. Largura contida
   (~22rem), conteúdo com respiro — nunca largo, sem margem e sem título.
 * Tipos success/info/warning/danger (cor + ícone + mensagem). Auto-dismiss ~4s,
-  dispensável, empilhável.
+  dispensável, **empilhável com folga**: toasts simultâneos têm **margem entre si**
+  (nunca colados) — aplicada no wrapper de mensagem (`pt.message`), não no chrome.
 * **Disparo pós-ação:** ex. após excluir → "Usuário excluído."; após salvar → "Salvo."
 * **Falha de salvamento sempre vira toast.** Em qualquer erro de save (validação
   **ou** API), além do informativo geral no topo + erros por campo, dispare um
@@ -441,6 +443,14 @@ scrollbar fina da identidade.
   Se os dados já estiverem em **cache**, a digitação filtra no cliente.
 * **Filtros sempre que possível**; **ordenação**; **carregamento por scroll infinito**
   (lote de 30 — §8.6/ADR-002), nunca controles de página.
+* **Filtros não requisitam o backend ao mudar.** Em telas de CRUD/pesquisa com
+  parâmetros + botão buscar, **alterar um filtro filtra o cache localmente** (sobre
+  os dados já carregados) — **sem** nova requisição. Os filtros servem como
+  **parâmetros da requisição**: quando há uma busca (Enter/Buscar) ou carga
+  (scroll), os valores atuais dos filtros vão no request. Ex.: já listei usuários;
+  mudar "Situação" filtra a lista carregada na hora; a próxima busca leva
+  "Situação" como parâmetro ao backend. (A **busca por termo** é a ação que dispara
+  o request — §9.1; os **filtros** apenas refinam/parametrizam.)
 * Quando fizer sentido, **cards de situação** no topo com dados importantes do resultado
   (totais, críticos, etc.).
 * Sem ações inline no grid (ver 8.5).
@@ -597,6 +607,8 @@ Lista direta — boa parte saiu da tela de Usuários:
 * **Botões de ação inline no grid de pesquisa.**
 * Página de pesquisa que **carrega dados ao abrir**.
 * **Busca incremental no backend** a cada tecla.
+* **Filtro que dispara requisição ao backend ao mudar** (deve filtrar o cache
+  localmente; só vai ao backend como parâmetro na próxima busca/carga).
 * Status comunicado **só por cor**.
 * Sombra como único recurso de profundidade no escuro.
 * Cor/medida fora dos tokens (hex/px avulso).

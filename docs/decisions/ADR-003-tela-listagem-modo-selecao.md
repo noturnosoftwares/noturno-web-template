@@ -88,21 +88,32 @@ parâmetro de rota, e a servir como única fonte de pesquisa e seleção do seu 
    - modo seleção → Enter / duplo clique / clique **confirmam e devolvem** o
      registro à tela solicitante (não abrem detalhes).
 
-4. **Botão "Ver detalhes" obrigatório.** Como em modo seleção os gestos ficam
-   reservados para devolver, toda listagem deve ter, **além do botão Incluir**, um
-   botão explícito **Ver detalhes** (e/ou Editar). Esse botão funciona nos dois modos;
-   em modo seleção é o único caminho para abrir o registro para análise/edição,
-   preservando o fluxo contínuo.
+4. **Botão "Ver detalhes" — apenas no modo seleção.** Como em modo seleção os
+   gestos (clique/Enter/duplo clique) ficam reservados para **devolver** o registro,
+   é preciso um caminho explícito para abrir o registro: por isso a coluna/botão
+   **Ver detalhes** existe **somente nesse modo**. Em **modo gestão** ela é
+   **omitida** — o clique na linha já abre os detalhes, então o botão seria
+   redundante. O botão **Incluir** aparece nos dois modos.
 
-5. **Canal de retorno (rota + store).** Uma store compartilhada de seleção atua como
+5. **Reentrada de modo nos detours.** Abrir **Ver detalhes** ou **Incluir** durante
+   o modo seleção é um *detour*: a query `mode/req` é **levada adiante** para a tela
+   de detalhe/inclusão e **devolvida** quando ela retorna à listagem, de modo que a
+   listagem **reentra em modo seleção** e o registro editado/incluído fica
+   imediatamente selecionável. A seleção **não** é encerrada por um detour — só por
+   confirmar ou cancelar.
+
+6. **Canal de retorno (rota + store).** Uma store compartilhada de seleção atua como
    canal de retorno entre a tela solicitante e a listagem.
 
 ### Convenção de rota
 
 A tela solicitante registra uma requisição na store, recebe um `id` e navega para a
 listagem com a query `?mode=select&req=<id>`. A listagem, em modo seleção, resolve a
-requisição na store e retorna (`router.back()` ou navega para `returnTo`). A tela
-solicitante consome o resultado ao ser reativada.
+requisição na store e **navega para o `returnTo`** da requisição — **não**
+`router.back()`. Motivo: a listagem pode ter *detours* no histórico (Ver detalhes,
+Incluir), e o `back()` cairia no detalhe e não na solicitante; o `returnTo` é
+robusto a qualquer profundidade de histórico. A tela solicitante consome o resultado
+ao ser reativada.
 
 ### Contratos (em `shared/selection/`)
 
@@ -146,6 +157,12 @@ Queries
 - Não usar diálogo/modal com `Promise` como mecanismo de retorno (ver Opção 2).
 - Não alterar o comportamento da listagem em modo gestão.
 - Não reservar Enter/duplo clique para "devolver" em modo gestão.
+- Não mostrar a coluna/botão "Ver detalhes" em modo gestão (redundante com o clique
+  na linha) — ela é exclusiva do modo seleção.
+- Não encerrar a seleção ao abrir um detour (Ver detalhes/Incluir): a query
+  `mode/req` deve ser levada e devolvida para a listagem reentrar em seleção.
+- Não usar `router.back()` para devolver o registro — usar o `returnTo` (robusto a
+  detours).
 
 ## Consequências
 
