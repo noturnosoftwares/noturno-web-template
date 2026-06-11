@@ -457,12 +457,16 @@ scrollbar fina da identidade.
   que salvar**, evitando "salvar" sem efeito e cliques à toa (ver §10.10). Ações que não
   dependem de edição (ex.: **Excluir** em modo edição) ficam no **cabeçalho da entidade**,
   não na barra de salvar.
-* **Confirmar antes** de: pagar, excluir e qualquer ação destrutiva/irreversível.
-* **Cancelar (ADR-001):** cancelar uma **edição** **restaura o registro original**
-  (snapshot imutável na `BaseCrudStore`) e **permanece na tela de detalhe** — não
-  volta para a pesquisa. Cancelar um **registro novo** (sem objeto anterior)
-  descarta e **volta para a listagem**. A regra mora na `BaseCrudStore`
-  (`cancelEditing() → 'stay' | 'leave'`); a página só **reage** ao resultado.
+* **Confirmar antes** de: cancelar, pagar, excluir e qualquer ação
+  destrutiva/irreversível.
+* **Cancelar (ADR-001):** cancelar **descarta alterações**, então **confirma
+  antes** quando o registro está *dirty* ("Cancelar alterações?", diálogo
+  `danger`, com "Continuar editando"); sem alterações, cancela direto. **Após
+  confirmar:** cancelar uma **edição** **restaura o registro original** (snapshot
+  imutável na `BaseCrudStore`) e **permanece na tela de detalhe** — não volta para
+  a pesquisa; cancelar um **registro novo** descarta e **volta para a listagem**.
+  A regra mora na `BaseCrudStore` (`cancelEditing() → 'stay' | 'leave'`); a página
+  pergunta a confirmação quando `isDirty` e só **reage** ao resultado.
 * **Falha de salvamento → toast.** Em qualquer erro de save (validação ou API),
   mantenha o informativo geral no topo + erros por campo **e** dispare um toast
   `error` com a **mesma mensagem geral** (§8.8). Ver `docs/ui` §3.
@@ -598,6 +602,7 @@ Lista direta — boa parte saiu da tela de Usuários:
 * **Salvar/Cancelar visíveis sem nenhuma alteração** (barra de ação deve ser dirty-aware).
 * **Rodapé de ação flutuante/translúcido sobrepondo o conteúdo** (deve ficar FORA da rolagem).
 * **Sair de inclusão/edição com alterações sem confirmar o descarte** (perde tudo em silêncio).
+* **Cancelar uma edição/inclusão com alterações sem confirmar** (descarte silencioso — ADR-001).
 * **Reference field como listbox/autocomplete cravado** em vez de campo de busca (search).
 * **Pesquisa que zera ao voltar** de um registro (estado de busca tem que sobreviver).
 

@@ -96,6 +96,32 @@ um caminho de saída (limpar) para o usuário voltar à lista completa.
 
 ---
 
+## 5. Cancelar em CRUD — confirmar antes (DS §9.2 · ADR-001)
+
+**Problema corrigido.** O "Cancelar" descartava alterações **sem perguntar** —
+perda silenciosa do que o usuário havia digitado/alterado.
+
+**Regra.** Cancelar é uma ação que **descarta alterações**. Portanto:
+
+- **com alterações não salvas** (`isDirty`) → **confirmar antes** ("Cancelar
+  alterações?", diálogo de finalidade `danger`, com **"Continuar editando"** como
+  saída segura). Só **após confirmar** aplica-se o resultado abaixo;
+- **sem alterações** → cancela direto (não há o que perder).
+
+**Após confirmar (ADR-001):**
+
+- **edição** → restaura o registro original (snapshot) e **permanece no detalhe**;
+- **registro novo** → descarta e **volta para a listagem**.
+
+A confirmação de cancelar é **distinta** da guarda de navegação (sair por
+voltar/rota → "Descartar alterações?"): são dois portões para a mesma proteção,
+em affordances diferentes, ambos só com o registro *dirty*.
+
+**Proibido.** Cancelar uma edição/inclusão com alterações **sem confirmar**
+(perde o trabalho em silêncio).
+
+---
+
 ## Histórico deste documento
 
 Estes padrões consolidam correções de UI transversais identificadas no produto

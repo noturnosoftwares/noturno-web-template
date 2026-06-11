@@ -60,15 +60,26 @@ a restauração.
 - A `BaseCrudStore` é a **fonte única** do estado de edição com snapshot:
   `beginCreate(blank)`, `beginEdit(record)`, `setEditing(record)`,
   `commitEditing(saved)`, `clearEditing()` e `cancelEditing(): 'stay' | 'leave'`.
+- **Confirmar antes de cancelar quando há alterações não salvas.** Cancelar é uma
+  ação que **descarta alterações**; por isso, com o registro *dirty*, a tela
+  **pergunta antes** ("Cancelar alterações?" — diálogo de finalidade `danger`,
+  com "Continuar editando" como saída). Sem alterações, cancela direto (não há o
+  que perder). Só **após confirmar** é que se aplica a restauração/navegação
+  abaixo. Isso vale para inclusão e edição (qualquer estado *dirty*).
 - **Cancelar uma edição** restaura o registro original (snapshot) e **mantém o
   usuário na tela de detalhe**. Não navega para a pesquisa.
 - **Cancelar um registro novo** (sem objeto anterior) descarta a inclusão e
   **volta para a listagem/pesquisa**.
-- A página (presentation) **não** decide a regra: ela chama `cancelEditing()` e
-  apenas **reage** ao resultado (`stay` → permanece; `leave` → navega). Nenhuma
-  regra de negócio mora no `.vue`.
+- A página (presentation) **não** decide a regra: pergunta a confirmação quando
+  `isDirty`, chama `cancelEditing()` e apenas **reage** ao resultado (`stay` →
+  permanece; `leave` → navega). Nenhuma regra de negócio mora no `.vue`.
 - O snapshot é **imutável**: toda mutação passa por `setEditing` com nova
   instância (copyWith). Proibido mutar o registro em edição no lugar.
+
+> A confirmação de cancelar é **distinta** da guarda de navegação (sair da tela
+> por voltar/rota com alterações não salvas → "Descartar alterações?"). São dois
+> portões para a mesma proteção, em affordances diferentes (botão Cancelar × sair
+> da tela); ambos só aparecem com o registro *dirty*.
 
 ## Consequências
 
@@ -95,9 +106,8 @@ a restauração.
 
 ## Quando revisar esta decisão
 
-- Se surgir necessidade de **confirmar** o cancelamento (diálogo) por tipo de
-  tela — hoje o cancelar é seguro porque restaura, mas telas críticas podem pedir
-  confirmação adicional.
+- Se alguma tela precisar **cancelar sem confirmação** mesmo com alterações (raro
+  — exigiria justificativa de UX), ou confirmar **sempre** (mesmo sem alterações).
 - Quando houver edição **multi-etapas/wizard**, que pode exigir snapshots
   parciais por etapa.
 
