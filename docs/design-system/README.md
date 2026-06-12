@@ -334,8 +334,11 @@ Anatomia: **label (em cima)** → **controle** → **hint/erro (embaixo)**.
   texto livre: usam máscara (PrimeVue `InputMask`, `unmask`→dígitos no model). Nunca pedir
   ao usuário que digite pontuação à mão nem validar formato "na unha".
 * **Data usa `DateField`, nunca `<input type="date">` nativo.** O nativo é péssimo para
-  **digitar** — o `DateField` (PrimeVue `DatePicker`) aceita **digitação `dd/mm/aaaa`** e
-  abre o **calendário** pelo ícone (à direita, centralizado); o model trafega em ISO.
+  **digitar**. O `DateField` é **`InputMask` (`dd/mm/aaaa`) + calendário** (`DatePicker`
+  inline num `Popover`, aberto pelo ícone à direita): a digitação é **mascarada** e, ao
+  completar uma data válida, **a seleção do calendário acompanha o que foi digitado**;
+  escolher no calendário preenche o input. O model trafega em ISO. *(O `DatePicker` cru
+  sozinho não mascara nem segue a digitação — por isso a composição.)*
 * **E-mail é sempre gravado em minúsculas.** Todo campo de e-mail normaliza para lowercase
   no `set` (`normalizeEmail` de `shared/extensions`) e **também no mapper `fromJson`** —
   ou seja, **inclusive vindo do backend**. Evita duplicidade e divergência de login;
@@ -364,6 +367,11 @@ Anatomia: **label (em cima)** → **controle** → **hint/erro (embaixo)**.
   Na dúvida sobre qual usar (ou se um dado é "lista/lookup" ou outra coisa), **pergunte antes**
   de implementar — não assuma. *(Erro recorrente: tratar FK como autocomplete inline; o
   esperado é abrir o cadastro.)*
+  * **Ida-e-volta do modo seleção** (obrigatório): abrir a listagem **não** é "sair da edição"
+    — a guarda de navegação **não** pode pedir descarte ao ir para `?mode=select` (libere essa
+    rota no `onBeforeRouteLeave`). E ao **voltar**, devolva o **foco** (e role até) o campo que
+    disparou a busca — registre o `focusId` na requisição e use `restoreSelectionFocus` no
+    retorno. O usuário nunca deve perder o lugar na tela.
 
 ### 8.2 Botão (`BaseButton`)
 
