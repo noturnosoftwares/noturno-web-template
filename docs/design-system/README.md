@@ -140,6 +140,11 @@ elemento, mais clara a superfície.
 | `feedback-warning`     | `yellow`             | `yellow` @ 14% | Atenção, pendência           |
 | `feedback-info`        | `blue-light`         | `blue` @ 14%   | Informação, neutro positivo  |
 
+**Identidade (avatar de pessoas, §8.11).** Conjunto curado `--color-avatar-1..5`
+(laranja, verde, verde-claro, azul-claro, azul), tint @18% de fundo + cor cheia de texto.
+Todos derivados dos primitivos `noturno-*`; **não** inclui vermelho/amarelo (reservados a
+erro/alerta). A escolha por pessoa é **determinística** (hash do nome).
+
 ### 2.3 Regras de cor dark-first (obrigatórias)
 
 * **Nunca** usar sombra como **único** recurso de profundidade. Separe por superfície
@@ -260,9 +265,14 @@ este conjunto; a spec abaixo descreve cada um):
 | `EmptyState`      | `empty-state.vue`       | Vazio com `tone` (accent/danger/muted)   |
 | `FormSkeleton`    | `form-skeleton.vue`     | Placeholder de detalhe/form ao carregar (§10.11) |
 | `SearchField`     | `search-field.vue`      | Busca (Enter; ícone sem sobrepor)        |
-| `LookupField`     | `lookup-field.vue`      | Referência a registro (campo **search**) |
+| `LookupField`     | `lookup-field.vue`      | Referência a registro (abre listagem em modo seleção — ADR-003) |
+| `SearchLookupField` | `search-lookup-field.vue` | Referência **type-to-search** (dado sem tela de listagem ainda) |
+| `RecordCodeBadge` | `record-code-badge.vue` | Código do registro (`Novo` / `Cód. NNNNN`) — §8.11 |
+| `InitialsAvatar`  | `initials-avatar.vue`   | Avatar de iniciais para pessoas (cor por nome) — §8.11 |
 | `FormField`       | `form-field.vue`        | Wrapper label → controle → hint/erro     |
 | `BaseTextField`   | `base-text-field.vue`   | Input de texto (FormField embutido)      |
+| `MaskedField`     | `masked-field.vue`      | Input com **máscara** (CPF/CEP/telefone) + `searchable` opcional |
+| `DateField`       | `date-field.vue`        | **Data**: calendário + digitação `dd/mm/aaaa` (v-model ISO) |
 | `BaseSelect`      | `base-select.vue`       | Seleção discreta (mesma anatomia do campo) |
 | `FormSection`     | `form-section.vue`      | Grupo de campos por contexto             |
 | `BaseDataTable`   | `base-data-table.vue`   | Grid de leitura (sort/paginação client)  |
@@ -315,8 +325,27 @@ Anatomia: **label (em cima)** → **controle** → **hint/erro (embaixo)**.
 * **Booleano (sim/não, ativo/inativo, habilitar/desabilitar) é sempre um `Switch`** — nunca
   checkbox, select de duas opções ("Sim"/"Não") ou par de rádios. O switch comunica
   estado on/off de imediato e é operável por teclado.
-* **Campo de referência a outro registro é `LookupField`** (type-to-search), não input de
-  ID cru nem select gigante — ver §9.2.
+* **Dado formatado usa máscara (`MaskedField`).** CPF, CEP, telefone/celular **não** são
+  texto livre: usam máscara (PrimeVue `InputMask`, `unmask`→dígitos no model). Nunca pedir
+  ao usuário que digite pontuação à mão nem validar formato "na unha".
+* **Data usa `DateField`, nunca `<input type="date">` nativo.** O nativo é péssimo para
+  **digitar** — o `DateField` (PrimeVue `DatePicker`) aceita **digitação `dd/mm/aaaa`** e
+  abre o **calendário** pelo ícone; o model trafega em ISO.
+* **Campo que pesquisa / virá do backend nasce como busca.** Todo dado que **consulta**
+  algo (cidade, representante) ou que **virá de uma API no futuro** (endereço/mapa, CEP)
+  é um **campo de busca** — `SearchLookupField` (type-to-search) quando há resolução, ou o
+  gatilho `searchable` do `MaskedField`/campo de texto (mostra o ícone de busca e emite
+  `search`, hoje "em breve") para integrações futuras. **Proibido** nascer como texto puro
+  um campo que claramente vai pesquisar.
+* **Campo de referência a outro registro** nunca é input de ID cru nem select gigante.
+  Dois sabores:
+  * **`LookupField`** — quando o dado **já tem tela de listagem**: o campo abre essa
+    listagem em **modo seleção** e recebe o registro de volta (canal `shared/selection`,
+    ADR-003). É a forma **preferida** (reuso de tela, deep-link, filtro de aceitação).
+  * **`SearchLookupField`** — **type-to-search** (autocomplete) para dado de backend que
+    **ainda não tem tela** (ex.: Cidade, Representante): digita ≥ N letras, escolhe da
+    lista. É a **ponte** enquanto a listagem não existe; quando ela existir, migra-se
+    para `LookupField`. Mesma anatomia de campo (40px) e overlay do `BaseSelect`.
 
 ### 8.2 Botão (`BaseButton`)
 
@@ -440,6 +469,24 @@ scrollbar fina da identidade.
   substitui o `<fieldset>` "na mão".
 * **`StickyActionBar` (rodapé de ação):** Salvar/Cancelar **dirty-aware**, **sólido e FORA
   da área de rolagem** (não flutua nem sobrepõe o conteúdo) — ver §10.10.
+
+### 8.11 Identidade do registro — código e avatar de iniciais
+
+* **Código em toda tela (`RecordCodeBadge`).** Todo registro **expressa seu código**:
+  - nas **listas de pesquisa**, uma coluna **"Cód."** (a primeira, estreita);
+  - no **cabeçalho do formulário**, o badge ao lado do título.
+  Registro **novo** → pílula neutra **"Novo"**; existente → **`Cód. NNNNN`** (zero-pad,
+  accent). É um afford­ance consistente de "onde estou / qual registro é este".
+* **Avatar de iniciais para pessoas (`InitialsAvatar`).** Nas **listas de pessoas**
+  (funcionários, usuários e, no futuro, clientes/fornecedores) a célula de **nome** leva
+  um avatar circular com as **iniciais** (primeiro + último nome; ignora conectivos
+  "da/de/dos"). A **cor é determinística** pelo nome (mesma pessoa → mesma cor), escolhida
+  de um **conjunto curado da paleta oficial** (tokens `--color-avatar-*`: laranja, verdes e
+  azuis), **sem vermelho/amarelo** (que carregam semântica de erro/alerta). Tint suave de
+  fundo + inicial na cor cheia, anel sutil — elegante e legível no dark. **Não** usar
+  avatar em registros que não são pessoas (perfil, operador de caixa): só o código.
+* **Cores fora da paleta continuam proibidas.** O avatar **não** abre exceção: as cores de
+  identidade são tokens derivados dos primitivos `noturno-*` (§2), não hex avulso.
 
 ---
 
@@ -680,6 +727,13 @@ Lista direta — boa parte saiu da tela de Usuários:
 * **Botão que abre lista em modo seleção permitindo escolher registro inválido**
   (operador inativo, funcionário demitido) — respeitar o filtro de aceitação (ADR-003).
 * **Itens do dropdown de `BaseSelect` colados na borda** (sem o recuo do campo) — §8.1.
+* **Registro sem expressar o código** (lista sem coluna "Cód." ou form sem badge — §8.11).
+* **Campo formatado (CPF/CEP/telefone) sem máscara**, ou **data em `<input type="date">`
+  nativo** (ruim para digitar) em vez de `MaskedField`/`DateField` — §8.1.
+* **Campo que pesquisa/virá de backend nascendo como texto puro** (sem `SearchLookupField`
+  nem gatilho `searchable`) — §8.1.
+* **Lista de pessoas sem avatar de iniciais**, ou avatar com cor fora dos tokens
+  `--color-avatar-*` / com vermelho/amarelo (semântica de erro/alerta) — §8.11.
 
 ---
 
