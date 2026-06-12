@@ -265,8 +265,9 @@ este conjunto; a spec abaixo descreve cada um):
 | `EmptyState`      | `empty-state.vue`       | Vazio com `tone` (accent/danger/muted)   |
 | `FormSkeleton`    | `form-skeleton.vue`     | Placeholder de detalhe/form ao carregar (§10.11) |
 | `SearchField`     | `search-field.vue`      | Busca (Enter; ícone sem sobrepor)        |
-| `LookupField`     | `lookup-field.vue`      | Referência a registro (abre listagem em modo seleção — ADR-003) |
-| `SearchLookupField` | `search-lookup-field.vue` | Referência **type-to-search** (dado sem tela de listagem ainda) |
+| `LookupField`     | `lookup-field.vue`      | Referência (FK) **somente-leitura** que abre o cadastro em modo seleção (ADR-003) — **default** |
+| `Country/State/CityLookupField` | `*-lookup-field.vue` | `LookupField` por entidade do módulo `locations` (abrir+filtrar encapsulados) |
+| `SearchLookupField` | `search-lookup-field.vue` | Referência **type-to-search** inline — caso pontual, **não** é o padrão de FK |
 | `RecordCodeBadge` | `record-code-badge.vue` | Código do registro (`Novo` / `Cód. NNNNN`) — §8.11 |
 | `InitialsAvatar`  | `initials-avatar.vue`   | Avatar de iniciais para pessoas (cor por nome) — §8.11 |
 | `FormField`       | `form-field.vue`        | Wrapper label → controle → hint/erro     |
@@ -308,6 +309,10 @@ Anatomia: **label (em cima)** → **controle** → **hint/erro (embaixo)**.
   *somado* à borda colorida) — lê como "borda dupla/grossa". É **um** realço, não dois.
 * **Ícone dentro do campo nunca sobrepõe o texto.** Se houver ícone à esquerda (ex.: busca),
   o input recebe `padding-left = largura do ícone + space-3`. *(Bug visto na tela de Usuários.)*
+* **Ícone interno fica sempre centralizado na vertical** (`top: 50%`, translate -50%),
+  encostado na borda correspondente (esquerda p/ busca, direita p/ calendário/limpar) —
+  **nunca** alinhado ao topo ou ao rodapé do campo. *(Bug visto no `DateField`: ícone do
+  calendário caía no canto inferior direito.)*
 * **Painel aberto do `BaseSelect` (overlay).** O dropdown é superfície de overlay
   (`surface-3`/`elev-3`, borda + raio + sombra suave) e **cada opção tem o mesmo
   recuo horizontal do campo** (`padding-left` alinhado ao texto/placeholder e ao
@@ -330,22 +335,35 @@ Anatomia: **label (em cima)** → **controle** → **hint/erro (embaixo)**.
   ao usuário que digite pontuação à mão nem validar formato "na unha".
 * **Data usa `DateField`, nunca `<input type="date">` nativo.** O nativo é péssimo para
   **digitar** — o `DateField` (PrimeVue `DatePicker`) aceita **digitação `dd/mm/aaaa`** e
-  abre o **calendário** pelo ícone; o model trafega em ISO.
+  abre o **calendário** pelo ícone (à direita, centralizado); o model trafega em ISO.
+* **E-mail é sempre gravado em minúsculas.** Todo campo de e-mail normaliza para lowercase
+  no `set` (`normalizeEmail` de `shared/extensions`) e **também no mapper `fromJson`** —
+  ou seja, **inclusive vindo do backend**. Evita duplicidade e divergência de login;
+  e-mail é case-insensitive na prática.
 * **Campo que pesquisa / virá do backend nasce como busca.** Todo dado que **consulta**
   algo (cidade, representante) ou que **virá de uma API no futuro** (endereço/mapa, CEP)
-  é um **campo de busca** — `SearchLookupField` (type-to-search) quando há resolução, ou o
-  gatilho `searchable` do `MaskedField`/campo de texto (mostra o ícone de busca e emite
-  `search`, hoje "em breve") para integrações futuras. **Proibido** nascer como texto puro
-  um campo que claramente vai pesquisar.
-* **Campo de referência a outro registro** nunca é input de ID cru nem select gigante.
-  Dois sabores:
-  * **`LookupField`** — quando o dado **já tem tela de listagem**: o campo abre essa
-    listagem em **modo seleção** e recebe o registro de volta (canal `shared/selection`,
-    ADR-003). É a forma **preferida** (reuso de tela, deep-link, filtro de aceitação).
-  * **`SearchLookupField`** — **type-to-search** (autocomplete) para dado de backend que
-    **ainda não tem tela** (ex.: Cidade, Representante): digita ≥ N letras, escolhe da
-    lista. É a **ponte** enquanto a listagem não existe; quando ela existir, migra-se
-    para `LookupField`. Mesma anatomia de campo (40px) e overlay do `BaseSelect`.
+  é um **campo de busca** — `LookupField` (abre o cadastro em modo seleção) quando é uma
+  **referência (FK)**, ou o gatilho `searchable` do `MaskedField`/campo de texto (mostra o
+  ícone de busca e emite `search`, hoje "em breve") para integrações futuras (endereço/mapa,
+  CEP). **Proibido** nascer como texto puro um campo que claramente vai pesquisar.
+* **Campo de referência a outro registro (FK)** nunca é input de ID cru, select gigante,
+  nem **digitação livre**. **Regra de produto: o padrão é o `LookupField`** — um **campo de
+  pesquisa somente-leitura** que, ao acionar, **abre a tela/módulo daquele cadastro em modo
+  seleção** (canal `shared/selection`, ADR-003) e recebe o registro de volta. **Não se digita
+  no campo** — a pesquisa acontece na tela de listagem. Vale para Cidade, Estado/UF, País,
+  Representante, Cliente, Fornecedor, Funcionário, Operador…
+  * **`LookupField`** (**default**) — lupa + registro selecionado (ou placeholder); clicar
+    emite `open`. Enquanto o cadastro-alvo **ainda não tem tela**, o campo já nasce assim e o
+    `open` informa "em breve" (ou abre um placeholder) — o formato certo desde já, a tela é
+    plugada depois. Widgets prontos por entidade: `CityLookupField`/`StateLookupField`/
+    `CountryLookupField` (módulo `locations`), que encapsulam abrir a listagem + filtro.
+  * **`SearchLookupField`** (autocomplete type-to-search) — **não é o padrão de FK**. Existe
+    só para casos pontuais onde digitar inline faz sentido e não há tela de listagem própria;
+    referência de cadastro usa `LookupField`.
+
+  Na dúvida sobre qual usar (ou se um dado é "lista/lookup" ou outra coisa), **pergunte antes**
+  de implementar — não assuma. *(Erro recorrente: tratar FK como autocomplete inline; o
+  esperado é abrir o cadastro.)*
 
 ### 8.2 Botão (`BaseButton`)
 
@@ -798,7 +816,7 @@ Regras **não-layerizadas** em `globals.css` (vencem a layer `primevue`):
 * [ ] Paginação presente; sem ações inline no grid de pesquisa; ordenação onde cabe.
 * [ ] Diálogos coloridos por finalidade + confirmações (cancelar/pagar/excluir) + guarda de navegação.
 * [ ] Toasts no **topo-direito** após ações (sem cobrir a busca), com chrome completo (§8.8).
-* [ ] Forms agrupados por contexto e sem poluição; booleanos em `Switch`; referências em `LookupField`.
+* [ ] Forms agrupados por contexto e sem poluição; booleanos em `Switch`; referências (FK) em `LookupField` (campo read-only que abre o cadastro em modo seleção); e-mail em lowercase.
 * [ ] Estados loading/vazio/erro/sucesso previstos.
 * [ ] Contraste e foco de teclado ok; responsivo.
 * [ ] Animações sutis aplicadas; nada extravagante.
