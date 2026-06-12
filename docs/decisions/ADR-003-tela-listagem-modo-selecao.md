@@ -105,6 +105,17 @@ parâmetro de rota, e a servir como única fonte de pesquisa e seleção do seu 
 6. **Canal de retorno (rota + store).** Uma store compartilhada de seleção atua como
    canal de retorno entre a tela solicitante e a listagem.
 
+7. **Filtro de aceitação opcional.** A tela solicitante pode declarar, na requisição,
+   **quais registros são selecionáveis** — um critério que a listagem, em
+   `mode=select`, **deve respeitar**. É a regra geral para casos como "só operador
+   **ativo**", "só funcionário **não-demitido**", "só contrato **vigente**": não faz
+   sentido vincular um registro inválido. O critério é um **mapa livre por recurso**
+   (`SelectionFilter`); cada listagem interpreta as chaves que conhece (ex.:
+   `{ status: 'active' }`) e, quando o filtro está ausente, aplica seu **padrão
+   seguro**. O filtro **restringe a seleção**, não substitui os filtros de UI da
+   listagem (busca, situação) — apenas trava o que pode ser devolvido. A solicitante
+   continua dona da regra de negócio; a listagem só a honra.
+
 ### Convenção de rota
 
 A tela solicitante registra uma requisição na store, recebe um `id` e navega para a
@@ -119,17 +130,23 @@ ao ser reativada.
 
 ```ts
 // shared/selection/selection-types.ts
+export type SelectionFilter = Record<string, unknown>; // critério de aceitação por recurso
+
 export type SelectionRequest = {
-  id: string;          // id único da requisição
-  resource: string;    // recurso pedido, ex.: 'perfis'
-  returnTo: string;    // rota da tela solicitante
-  multiple?: boolean;  // seleção múltipla (reservado p/ futuro)
+  id: string;             // id único da requisição
+  resource: string;       // recurso pedido, ex.: 'perfis'
+  returnTo: string;       // rota da tela solicitante
+  filter?: SelectionFilter; // o que é selecionável (ex.: { status: 'active' })
+  multiple?: boolean;     // seleção múltipla (reservado p/ futuro)
 };
 
 export type SelectionResult<T = unknown> =
   | { status: 'selected'; data: T }
   | { status: 'cancelled' };
 ```
+
+`useSelectionMode()` expõe `selectionFilter` (o `filter` da requisição corrente) para
+a listagem aplicar a restrição; a solicitante passa o critério em `open({ ..., filter })`.
 
 A `SelectionStore` (Pinia, em `shared/selection/` ou `shared/stores/`) mantém um mapa
 `requestId → pendente | resultado`, expondo, por contexto:
@@ -163,6 +180,11 @@ Queries
   `mode/req` deve ser levada e devolvida para a listagem reentrar em seleção.
 - Não usar `router.back()` para devolver o registro — usar o `returnTo` (robusto a
   detours).
+- Não permitir selecionar um registro **fora do filtro de aceitação** declarado pela
+  solicitante (ex.: operador inativo, funcionário demitido). A listagem deve travar a
+  seleção ao critério recebido.
+- Não embutir a regra de aceitação na listagem: ela é **declarada pela solicitante**
+  (que conhece o domínio) e apenas **honrada** pela listagem.
 
 ## Consequências
 
@@ -213,3 +235,7 @@ Queries
 - Caso da primeira aplicação: cadastro de usuário selecionando perfil — a tela de
   perfil existente passa a ser aberta em modo seleção em vez de uma tela nova.
   Implementado no EspaçoN (`shared/selection`, `/perfis?mode=select`).
+- Filtro de aceitação em uso: o cadastro de usuário seleciona **operador de caixa**
+  com `filter: { status: 'active' }` (`/operadores-de-caixa?mode=select`), pois só
+  operador ativo pode ser vinculado. O mesmo se aplicará ao **funcionário** (excluir
+  demitidos) quando o módulo existir — mesma convenção, sem código novo no canal.

@@ -258,6 +258,7 @@ este conjunto; a spec abaixo descreve cada um):
 | `BaseCard`        | `base-card.vue`         | Superfície/card padrão                   |
 | `StatusBadge`     | `status-badge.vue`      | Situação (cor + ícone + rótulo)          |
 | `EmptyState`      | `empty-state.vue`       | Vazio com `tone` (accent/danger/muted)   |
+| `FormSkeleton`    | `form-skeleton.vue`     | Placeholder de detalhe/form ao carregar (§10.11) |
 | `SearchField`     | `search-field.vue`      | Busca (Enter; ícone sem sobrepor)        |
 | `LookupField`     | `lookup-field.vue`      | Referência a registro (campo **search**) |
 | `FormField`       | `form-field.vue`        | Wrapper label → controle → hint/erro     |
@@ -297,6 +298,12 @@ Anatomia: **label (em cima)** → **controle** → **hint/erro (embaixo)**.
   *somado* à borda colorida) — lê como "borda dupla/grossa". É **um** realço, não dois.
 * **Ícone dentro do campo nunca sobrepõe o texto.** Se houver ícone à esquerda (ex.: busca),
   o input recebe `padding-left = largura do ícone + space-3`. *(Bug visto na tela de Usuários.)*
+* **Painel aberto do `BaseSelect` (overlay).** O dropdown é superfície de overlay
+  (`surface-3`/`elev-3`, borda + raio + sombra suave) e **cada opção tem o mesmo
+  recuo horizontal do campo** (`padding-left` alinhado ao texto/placeholder e ao
+  hint) — itens **nunca** colados na borda esquerda. Opção sob o cursor/foco recebe
+  realce tonal; a selecionada, o tint accent. Aplicado via `pt` (overlay/list/option),
+  não no controle cru.
 * Derivados padronizados em `shared/widgets`: `SearchField`, `BaseSelect`, `LookupField`,
   `MoneyField`, `DateField`, `CpfField`, `CnpjField`, `CepField`, `PhoneField`. Formatação/
   validação vêm de `shared/extensions` — nunca recodificar máscara por tela.
@@ -393,6 +400,12 @@ Entregue como **`ConfirmDialog`** (finalidade via prop `purpose`). Layout padrã
 * Tipos success/info/warning/danger (cor + ícone + mensagem). Auto-dismiss ~4s,
   dispensável, **empilhável com folga**: toasts simultâneos têm **margem entre si**
   (nunca colados) — aplicada no wrapper de mensagem (`pt.message`), não no chrome.
+* **Dedupe por conteúdo (obrigatório).** Um toast cujo conteúdo idêntico
+  (severity + título + mensagem) **já está visível** não é reaberto — clicar
+  várias vezes em "Salvar" (ou em qualquer gatilho) **não** empilha cópias. A
+  chave se libera quando o toast anterior se dispensa (mesmo `life`). Disparar
+  **sempre** pelo wrapper `useAppToast().add(...)` (`shared/widgets`), nunca pelo
+  `useToast()` cru do PrimeVue.
 * **Disparo pós-ação:** ex. após excluir → "Usuário excluído."; após salvar → "Salvo."
 * **Falha de salvamento sempre vira toast.** Em qualquer erro de save (validação
   **ou** API), além do informativo geral no topo + erros por campo, dispare um
@@ -404,6 +417,14 @@ Entregue como **`ConfirmDialog`** (finalidade via prop `purpose`). Layout padrã
 Toda tela autenticada vive dentro do shell: **sidebar** (recolhível) + **topbar**
 (busca Ctrl+K, notificações, ajuda, perfil) + área de conteúdo em `surface-canvas`.
 **Proibido** página solta full-bleed dentro do app. *(Quebra vista na tela de Usuários.)*
+
+* **Sidebar com largura ajustável.** O usuário **arrasta a borda direita** para
+  acomodar rótulos longos (alça fina com `cursor-col-resize`, realce accent ao
+  passar/arrastar). A largura é **clampada** a um intervalo confortável e
+  **persistida** entre sessões (storage). Durante o arrasto, **sem** transição de
+  largura (acompanha o cursor); fora dele, transição suave. O **modo recolhido** (só
+  ícones) ignora a largura e desliga a alça. Rótulo que ainda exceda usa **ellipsis**
+  (uma linha), nunca corta no meio da palavra sem indicação.
 
 A **sidebar** é densa (padding vertical enxuto), rótulos em **uma linha** com ellipsis
 (`truncate`), ícone+texto alinhados à esquerda, sub-itens indentados por guia à esquerda
@@ -584,6 +605,33 @@ Distinto do **grid de pesquisa** (8.5, que é só leitura). Para entrada/ediçã
 * **Resumo de validação** no topo ao submeter com erros; **campos obrigatórios marcados**.
 * Combina com a guarda de navegação de 9.2 (descartar não-salvo).
 
+### 10.11 Abertura de detalhe/formulário — skeleton, nunca conteúdo anterior
+
+**Regra:** uma tela de detalhe/edição **nunca** renderiza o registro **anterior**
+enquanto carrega o novo. Abrir mostrando "sujeira" (dados do último registro,
+piscando antes de trocar) é proibido — a experiência tem de ser limpa.
+
+Causa comum: as stores de CRUD são **singletons**, então `editing` ainda guarda o
+último registro ao abrir outro detalhe. Padrão obrigatório:
+
+* **Limpar antes de carregar.** Ao entrar em edição, **zere o `editing`** (e rótulos
+  resolvidos) **antes** da chamada assíncrona — no `loadForEdit` da store **e**
+  **sincronamente no setup** da página (antes do 1º paint, pois `onMounted` roda
+  *depois* do primeiro render). Em **registro novo**, inicialize o form em branco
+  também no setup.
+* **Skeleton enquanto carrega.** Com `editing` nulo + `loading`, a tela mostra o
+  **`FormSkeleton`** (blocos pulsantes na mesma anatomia de seção/campo — par do
+  skeleton de linhas da tabela em §8.5), nunca os campos vazios/velhos. Condição
+  típica: `loading || (isEdit && !editing)`.
+* **Retorno de seleção é exceção.** No *detour* de modo seleção (ADR-003) a edição é
+  **preservada** (não limpa) — detecte isso **no setup** para não reinicializar o
+  formulário em andamento.
+* **Cabeçalho/ações coerentes.** Botões que dependem do registro (Excluir/Inativar)
+  só aparecem **com `editing`** carregado — não sobre o skeleton.
+
+O mesmo princípio vale para **listas**: durante o (re)carregamento o grid mostra o
+**skeleton de linhas** (§8.5), não os itens da busca anterior.
+
 ---
 
 ## 11. Acessibilidade & Usabilidade
@@ -627,6 +675,11 @@ Lista direta — boa parte saiu da tela de Usuários:
 * **Cancelar uma edição/inclusão com alterações sem confirmar** (descarte silencioso — ADR-001).
 * **Reference field como listbox/autocomplete cravado** em vez de campo de busca (search).
 * **Pesquisa que zera ao voltar** de um registro (estado de busca tem que sobreviver).
+* **Abrir detalhe/edição mostrando o registro ANTERIOR** enquanto carrega (flash de
+  conteúdo sujo da store singleton) — limpe antes de carregar e mostre `FormSkeleton` (§10.11).
+* **Botão que abre lista em modo seleção permitindo escolher registro inválido**
+  (operador inativo, funcionário demitido) — respeitar o filtro de aceitação (ADR-003).
+* **Itens do dropdown de `BaseSelect` colados na borda** (sem o recuo do campo) — §8.1.
 
 ---
 
