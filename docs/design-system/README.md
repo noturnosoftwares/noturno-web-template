@@ -276,6 +276,10 @@ este conjunto; a spec abaixo descreve cada um):
 | `DateField`       | `date-field.vue`        | **Data**: calendário + digitação `dd/mm/aaaa` (v-model ISO) |
 | `BaseSelect`      | `base-select.vue`       | Seleção discreta (mesma anatomia do campo) |
 | `FormSection`     | `form-section.vue`      | Grupo de campos por contexto             |
+| `FormTabs`        | `form-tabs.vue`         | Sub-abas internas de formulário (telas grandes) — ponto de alerta por aba |
+| `AddressSection`  | `address-section.vue`   | Seção de endereço de pessoa (ADR-010; `CityLookupField`) |
+| `BankAccountSection` | `bank-account-section.vue` | Seção de conta bancária de pessoa (ADR-010) |
+| `StatCard`        | `stat-card.vue`         | Card totalizador com count-up (dashboard de pesquisa §14.5) |
 | `BaseDataTable`   | `base-data-table.vue`   | Grid de leitura (sort/paginação client)  |
 | `BasePagination`  | `base-pagination.vue`   | Paginação                                |
 | `ConfirmDialog`   | `confirm-dialog.vue`    | Diálogo por finalidade (`purpose`)       |
@@ -406,6 +410,13 @@ Hover de card interativo: lift sutil (seção 7). Dashboards usam cards **animad
   **ler/escanear**. Ações se dão por: clique na linha → detalhe/edição; seleção → toolbar
   contextual; ou (exceção) um único menu "mais" por linha quando indispensável.
 * Estados: **loading** (skeleton de linhas), **vazio** (empty-state da seção 9.1), **erro**.
+* **Colunas priorizam o acesso rápido (regra geral).** Ao montar **qualquer** grid de
+  pesquisa, mostre primeiro **as colunas que o usuário busca no dia a dia**; campos de
+  baixo uso ficam **só no detalhe**, não no grid. Ordem padrão para **cadastros de
+  pessoa** (Funcionário, Fornecedor, Cliente, Transportadora…):
+  **Cód. → `InitialsAvatar` + Nome (fantasia/razão) → Documento (CNPJ/CPF) →
+  Telefone/Celular → Cidade/UF → Situação (`StatusBadge`)**. Registros sem um dado
+  (ex.: genérico sem documento/telefone) mostram "—" e podem exibir um badge de tipo.
 
 ### 8.6 Carregamento de listagem — scroll infinito (`BaseDataTable`) e `BasePagination`
 
@@ -545,8 +556,13 @@ scrollbar fina da identidade.
   mudar "Situação" filtra a lista carregada na hora; a próxima busca leva
   "Situação" como parâmetro ao backend. (A **busca por termo** é a ação que dispara
   o request — §9.1; os **filtros** apenas refinam/parametrizam.)
-* Quando fizer sentido, **cards de situação** no topo com dados importantes do resultado
-  (totais, críticos, etc.).
+* **Dashboard de totalizadores (regra geral).** Quando os **filtros da pesquisa forem
+  poucos/simples**, exibir **acima da busca** um **dashboard de cards com totalizadores**
+  (contadores) — `StatCard`, **animados** (count-up), usando tokens. Os números vêm de um
+  use-case de totais próprio (ex.: `GetSupplierTotals`), **independente da paginação**, e
+  é a primeira coisa que aparece (a tela ainda abre sem grid até a busca). Ex. Fornecedor:
+  **Total, Ativos, Inativos, Jurídica, Física, Genéricos**. Se os filtros forem
+  **muitos/complexos**, **omitir** o dashboard (não competir com a busca).
 * Sem ações inline no grid (ver 8.5).
 * **Preservar o contexto ao voltar.** Abrir um registro e retornar **não pode zerar** a
   pesquisa: o termo, os filtros e os resultados continuam. Melhor ainda — ao voltar,
