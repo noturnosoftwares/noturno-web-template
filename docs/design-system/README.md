@@ -501,7 +501,9 @@ scrollbar fina da identidade.
 
 * **Switch (`ToggleSwitch` no preset Noturno):** o controle on/off de **todo booleano**
   (§8.1/9.2). Thumb centrado na vertical, encostando à direita (ON) / esquerda (OFF) — ver
-  a correção obrigatória de alinhamento em §13.3.
+  a correção obrigatória de alinhamento em §13.3. **Ligado = dourado da marca** (`primary`,
+  com o thumb escuro em contraste): a cor do estado ON é fixada por tokens de componente no
+  preset (§13.2), nunca uma cor avulsa. Cinza = OFF; dourado = ON — sem exceção.
 * **`FormSection`:** agrupa campos por contexto num card com título/descrição (§9.2) —
   substitui o `<fieldset>` "na mão".
 * **`StickyActionBar` (rodapé de ação):** Salvar/Cancelar **dirty-aware**, **sólido e FORA
@@ -626,6 +628,8 @@ superfície/borda do card é igual em todos.
 * "Novo registro" e "Salvar" acessíveis por atalho. Ao abrir um form, **foco automático**
   no primeiro campo útil.
 * Atalhos **descobríveis**: tooltip mostra a tecla; a tela de Ajuda lista os atalhos.
+* **Teclas padrão dos cadastros** (convenção de ERP desktop) são obrigatórias e uniformes —
+  ver §10.12.
 
 ### 10.2 Densidade configurável
 
@@ -721,6 +725,40 @@ Causa comum: as stores de CRUD são **singletons**, então `editing` ainda guard
 O mesmo princípio vale para **listas**: durante o (re)carregamento o grid mostra o
 **skeleton de linhas** (§8.5), não os itens da busca anterior.
 
+### 10.12 Teclas padrão dos cadastros (regra geral)
+
+Todo cadastro (listagem e formulário/detalhe) responde ao **mesmo conjunto de teclas**,
+replicando a convenção de ERP desktop. Centralizado no composable
+`useRecordFormShortcuts` (`shared/forms`) — **nunca** reimplementar `keydown` por tela.
+
+| Tecla    | Ação                          | Onde                                  |
+| -------- | ----------------------------- | ------------------------------------- |
+| `Insert` | **Novo** registro             | listagem e formulário                 |
+| `End`    | **Gravar**                    | formulário                            |
+| `Esc`    | **Cancelar** ou **voltar**    | formulário (e cancela seleção na lista) |
+| `Delete` | **Apagar/Inativar**           | formulário (registro atual)           |
+
+* **`Esc` é contextual:** se há edição/inclusão em andamento (form *dirty*), **cancela**
+  (dispara a confirmação de descarte quando aplicável); caso contrário, **volta** para a
+  listagem. Na **listagem em modo seleção** (ADR-003), `Esc` **cancela a seleção**.
+* **Sem sequestrar a digitação:** `End` e `Delete` têm semântica própria dentro de campos
+  de texto (mover cursor / apagar caractere) — os atalhos **só** disparam quando o foco
+  **não** está num `input`/`textarea`/`select`/contenteditable. `Insert` e `Esc` valem em
+  qualquer foco.
+* **Suspensos com diálogo aberto:** enquanto um `ConfirmDialog`/modal está visível, os
+  atalhos da tela ficam inertes (o diálogo trata as próprias teclas) — via `isBlocked`.
+* **Ações respeitam o estado:** `Delete` só age sobre registro **ativo** em edição; em
+  contas/registros **bloqueados** (inalteráveis) nem `End` nem `Delete` agem.
+
+### 10.13 Botão "Novo" no detalhe (regra geral)
+
+Toda tela de **detalhe/edição** traz um botão **"Novo"** (`pi-plus` + rótulo) no
+**cabeçalho**, ao lado das ações do registro (Inativar/Excluir). O usuário inicia outro
+cadastro **sem voltar à pesquisa** — `Insert` é o atalho equivalente (§10.12). Só aparece
+em modo edição (com `editing` carregado), nunca sobre o skeleton (§10.11). Quando o módulo
+tem **clonagem** (copiar a partir do registro aberto), o "Novo" abre o fluxo de cópia;
+senão, inicia um cadastro em branco.
+
 ---
 
 ## 11. Acessibilidade & Usabilidade
@@ -809,6 +847,9 @@ Helpers de classe: `.ds-focus-ring`, `.ds-card-lift`, `.ds-soft-pulse`, `.ds-ris
 (`#ffb621` = 500, `#ff9500` = 600), `surface` na escada dark (até `#040404`) e `formField`
 (borda discreta, raio 10px, foco dourado com anel suave). Assim **todo componente PrimeVue
 nasce on-brand** — proibido estilizar PrimeVue por fora com cor crua; ajustar via tokens.
+Tokens **por componente** entram em `components: { … }` do preset quando o padrão Aura não
+basta — ex.: `toggleswitch` fixa o estado **ligado no dourado** (`checkedBackground:
+{primary.color}`, thumb em `{primary.contrastColor}`), garantindo a regra de §8.10.
 
 ### 13.3 Correções obrigatórias do PrimeVue (universais)
 
@@ -845,6 +886,7 @@ Regras **não-layerizadas** em `globals.css` (vencem a layer `primevue`):
 * [ ] Contraste e foco de teclado ok; responsivo.
 * [ ] Animações sutis aplicadas; nada extravagante.
 * [ ] Operável por teclado (Enter/Esc/Tab; atalhos onde fizer sentido) e densidade respeitando o usuário.
+* [ ] Teclas padrão do cadastro via `useRecordFormShortcuts` (Insert/End/Esc/Delete — §10.12); detalhe com botão "Novo" no cabeçalho (§10.13).
 * [ ] Datas/moeda/números em pt-BR via helpers (sem formatação manual).
 * [ ] Detalhe denso via master-detail/drawer ou página com header + abas; auditoria no Histórico.
 * [ ] Ações contextuais por estado; lote via seleção; grid financeiro com totais; colunas/visões persistidas.
